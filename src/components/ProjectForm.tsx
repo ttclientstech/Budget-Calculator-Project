@@ -3,7 +3,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Upload, CheckCircle2, AlertCircle } from "lucide-react";
+import { Upload, CheckCircle2, AlertCircle, ChevronDown, Wand2 } from "lucide-react";
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
@@ -21,11 +21,11 @@ const formSchema = z.object({
     description: z
         .string()
         .min(500, { message: "Description must be at least 500 characters." })
-        .refine((val) => val.trim().split(/\s+/).length >= 50, {
-            message: "Description must be at least 50 words.",
+        .refine((val) => val.trim().split(/\s+/).length >= 500, {
+            message: "Description must be at least 500 words.",
         }),
 
-    category: z.string().optional(),
+    domain: z.string().min(1, { message: "Project domain is required." }),
     country: z.string().min(1, { message: "Country is required." }),
     file: z
         .custom<FileList>()
@@ -40,19 +40,20 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-const SERVICES = [
-    "AI & Next-Gen Tech",
+const PROJECT_DOMAINS = [
     "Web & Software Development",
     "Mobile App Development",
-    "Blockchain & Web3",
-    "Automation",
-    "Recruitment Services",
+    "Blockchain & Web3 Solutions",
+    "AI-driven Solutions",
+    "SaaS Development",
+    "Other",
 ];
+
+
 
 export default function ProjectForm() {
     const router = useRouter();
     const [isSubmitting, setIsSubmitting] = useState(false);
-    // const [isSuccess, setIsSuccess] = useState(false); // Removed in favor of redirect
 
     // Modal State
     const [isContactModalOpen, setIsContactModalOpen] = useState(false);
@@ -68,6 +69,8 @@ export default function ProjectForm() {
         resolver: zodResolver(formSchema),
     });
 
+    const domainValue = watch("domain"); // Watch domain for custom handling if needed, though mostly standard.
+
     const descriptionValue = watch("description") || "";
     const wordCount = descriptionValue.trim().split(/\s+/).filter((w) => w.length > 0).length;
 
@@ -81,17 +84,42 @@ export default function ProjectForm() {
         setIsSubmitting(true);
 
         try {
+            // --- STEP 1: CAPTURE LEAD (Save to DB) ---
+            // We do this immediately so we don't lose the lead if the AI step fails or user drops off.
+            try {
+                const leadPayload = {
+                    name: contactData.name,
+                    email: contactData.email,
+                    phone: contactData.phone,
+                    projectDescription: projectFormData?.description || "",
+                    domain: projectFormData?.domain || "General",
+                    country: projectFormData?.country || "",
+                };
+
+                // Send to backend (don't block heavily, but good to wait for 1s to ensure save)
+                await fetch("/api/leads", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(leadPayload),
+                });
+                console.log("Lead captured successfully");
+
+            } catch (leadError) {
+                console.error("Lead capture failed (proceeding to analysis anyway):", leadError);
+            }
+
+            // --- STEP 2: GENERATE ANALYSIS (OpenAI) ---
             const formData = new FormData();
             formData.append("description", projectFormData?.description || "");
-            formData.append("category", projectFormData?.category || "");
+            formData.append("category", projectFormData?.domain || "General"); // Handle optional domain
             formData.append("country", projectFormData?.country || "");
 
-            // Append contact info as JSON string or individual fields depending on how updated API wants it.
-            // The API mainly needs description/file for analysis, but we might want to log who asked.
+            // Append contact info
             formData.append("contactName", contactData.name);
             formData.append("contactEmail", contactData.email);
+            formData.append("contactPhone", contactData.phone); // Updated key
 
-            if (projectFormData?.file && projectFormData.file.length > 0) {
+            if (projectFormData && projectFormData.file && projectFormData.file.length > 0) {
                 formData.append("file", projectFormData.file[0]);
             }
 
@@ -107,15 +135,13 @@ export default function ProjectForm() {
             const analysisData = await response.json();
 
             // Store data for the analysis page to consume
-            // Combine the AI analysis with the client details for the report
             const fullReportData = {
                 client: {
                     name: contactData.name,
                     email: contactData.email,
-                    contact: contactData.whatsapp,
+                    contact: contactData.phone,
                     country: projectFormData?.country,
-                    // Basic flag mapping or default
-                    flag: "🏳️",
+                    flag: "🏳️", // Could implement mapping later
                     currency: "USD"
                 },
                 analysis: analysisData
@@ -136,9 +162,9 @@ export default function ProjectForm() {
     };
 
     return (
-        <section className="bg-background relative flex items-start justify-center pt-4 md:pt-8 pb-20 w-full">
+        <section id="project-form" className="relative flex items-start justify-center pt-8 pb-32 w-full">
 
-            {/* Contact Modal */}
+            {/* Contact Modal Integration */}
             <ContactModal
                 isOpen={isContactModalOpen}
                 onClose={() => setIsContactModalOpen(false)}
@@ -146,97 +172,101 @@ export default function ProjectForm() {
                 isSubmitting={isSubmitting}
             />
 
-            <div className="container px-4 md:px-6 mx-auto w-full max-w-[95vw] lg:max-w-7xl h-full flex flex-col justify-center">
+            <div className="container px-4 md:px-6 mx-auto w-full max-w-4xl">
 
                 <motion.div
-                    initial={{ opacity: 0, y: 40 }}
+                    initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.7, ease: "easeOut" }}
-                    className="bg-card rounded-[3rem] shadow-2xl p-8 md:p-16 lg:p-20 border border-white/50 relative overflow-hidden w-full"
+                    viewport={{ once: true, margin: "-50px" }}
+                    transition={{ duration: 0.4, ease: "easeOut" }}
+                    className="p-6 md:p-10 relative overflow-hidden max-w-4xl mx-auto bg-white/60 backdrop-blur-xl border border-white/40 shadow-xl rounded-3xl"
                 >
-                    {/* Decorative gradients */}
-                    <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-primary/5 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2 pointer-events-none" />
-                    <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-secondary/20 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/2 pointer-events-none" />
-
-                    {/* Merged Header Inside Card */}
-                    <div className="text-center mb-12 relative z-10">
-                        <h2 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl font-serif text-primary">
+                    <div className="text-center mb-8">
+                        <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-foreground font-sans">
                             Start Your Project
                         </h2>
-                        <p className="mt-4 text-muted-foreground text-xl max-w-2xl mx-auto font-light">
-                            Tell us about your next big idea. We're ready to bring it to life with our expert team.
+                        <p className="mt-2 text-muted-foreground text-sm md:text-base max-w-xl mx-auto">
+                            Fill in the details below to get a comprehensive project analysis and budget estimate.
                         </p>
                     </div>
 
-                    <form onSubmit={handleSubmit(onProjectSubmit)} className="space-y-10 relative z-10">
+                    <form onSubmit={handleSubmit(onProjectSubmit)} className="space-y-8">
 
-                        {/* Project Description */}
-                        <div className="space-y-3">
+                        {/* 1. Project Description (Required) */}
+                        <div className="space-y-2">
                             <div className="flex justify-between items-baseline">
-                                <label htmlFor="description" className="text-base font-semibold text-foreground/80">
-                                    Project Description
+                                <label htmlFor="description" className="text-sm font-medium text-foreground">
+                                    Project Description <span className="text-destructive">*</span>
                                 </label>
-                                <span className={`text-sm font-medium ${wordCount < 500 ? 'text-muted-foreground' : 'text-green-600'}`}>
-                                    {wordCount} / 500 words
-                                </span>
+                                <div className={`flex items-center gap-2 text-xs font-medium transition-colors duration-300 ${wordCount >= 500 ? 'text-green-600' : 'text-muted-foreground'}`}>
+                                    {wordCount >= 500 && <CheckCircle2 className="w-3 h-3" />}
+                                    {wordCount} words <span className="text-[10px] font-normal opacity-70">(min 500)</span>
+                                </div>
                             </div>
-                            <textarea
-                                suppressHydrationWarning
-                                {...register("description")}
-                                rows={8}
-                                placeholder="Describe your project requirements, goals, and target audience in detail..."
-                                className="flex min-h-[200px] w-full rounded-xl border-2 border-transparent bg-secondary/30 px-5 py-4 text-base ring-offset-background placeholder:text-muted-foreground focus:border-primary/50 focus:bg-background focus:outline-none focus:ring-4 focus:ring-primary/10 disabled:cursor-not-allowed disabled:opacity-50 resize-y transition-all duration-300 hover:bg-secondary/50"
-                            />
+                            <div className="relative">
+                                <textarea
+                                    suppressHydrationWarning
+                                    {...register("description")}
+                                    rows={8}
+                                    placeholder="Tell us about your project in 500+ words... What are your goals? Who is the target audience? What features do you envision?"
+                                    className="flex min-h-[200px] w-full rounded-xl border border-input/50 bg-white/80 p-4 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-50 resize-y shadow-sm transition-all duration-300 hover:bg-white hover:border-primary/30"
+                                />
+                                <div className="absolute bottom-3 right-3 bg-secondary/50 px-2 py-0.5 rounded text-[10px] text-muted-foreground pointer-events-none border border-border/50">
+                                    Markdown Supported
+                                </div>
+                            </div>
+
                             {errors.description && (
                                 <p className="text-sm text-destructive flex items-center gap-1 font-medium animate-in slide-in-from-left-1">
                                     <AlertCircle className="w-4 h-4" /> {errors.description.message}
                                 </p>
                             )}
+                            <p className="text-xs text-muted-foreground">
+                                * Detailed descriptions help us provide accurate estimates.
+                            </p>
                         </div>
 
+                        {/* 2 & 3. Domain (Optional) & Country (Required) */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-                        {/* Category & Country Row */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                            <div className="space-y-3">
-                                <label htmlFor="category" className="text-base font-semibold text-foreground/80">
-                                    Service Category <span className="text-sm font-normal text-muted-foreground">(Optional)</span>
+                            {/* Project Domain */}
+                            <div className="space-y-2">
+                                <label htmlFor="domain" className="text-sm font-medium text-foreground">
+                                    Project Domain <span className="text-muted-foreground font-normal ml-1">(Optional)</span>
                                 </label>
                                 <div className="relative group">
                                     <select
                                         suppressHydrationWarning
-                                        {...register("category")}
-                                        className="flex h-14 w-full items-center justify-between rounded-xl border-2 border-transparent bg-secondary/30 px-4 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus:border-primary/50 focus:bg-background focus:outline-none focus:ring-4 focus:ring-primary/10 disabled:cursor-not-allowed disabled:opacity-50 appearance-none transition-all duration-300 hover:bg-secondary/50"
+                                        {...register("domain")}
+                                        className="flex h-12 w-full items-center justify-between rounded-xl border border-input/50 bg-white/80 px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-50 appearance-none cursor-pointer shadow-sm transition-all duration-300 hover:bg-white hover:border-primary/30"
                                     >
-                                        <option value="">Select a service...</option>
-                                        {SERVICES.map((service) => (
-                                            <option key={service} value={service}>
-                                                {service}
+                                        <option value="">Select Domain...</option>
+                                        {PROJECT_DOMAINS.map((domain) => (
+                                            <option key={domain} value={domain}>
+                                                {domain}
                                             </option>
                                         ))}
                                     </select>
-                                    {/* Custom Arrow */}
-                                    <div className="absolute right-4 top-4 pointer-events-none opacity-50 group-hover:opacity-100 transition-opacity">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
-                                    </div>
+                                    <ChevronDown className="absolute right-3 top-3.5 h-4 w-4 opacity-50 pointer-events-none" />
                                 </div>
-                                {errors.category && (
+                                {errors.domain && (
                                     <p className="text-sm text-destructive flex items-center gap-1 font-medium animate-in slide-in-from-left-1">
-                                        <AlertCircle className="w-4 h-4" /> {errors.category.message}
+                                        <AlertCircle className="w-4 h-4" /> {errors.domain.message}
                                     </p>
                                 )}
                             </div>
 
-                            <div className="space-y-3">
-                                <label htmlFor="country" className="text-base font-semibold text-foreground/80">
-                                    Country
+                            {/* Country */}
+                            <div className="space-y-2">
+                                <label htmlFor="country" className="text-sm font-medium text-foreground">
+                                    Country <span className="text-destructive">*</span>
                                 </label>
                                 <input
+                                    type="text"
+                                    placeholder="Enter Country..."
                                     suppressHydrationWarning
                                     {...register("country")}
-                                    type="text"
-                                    placeholder="e.g. United States"
-                                    className="flex h-14 w-full rounded-xl border-2 border-transparent bg-secondary/30 px-4 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus:border-primary/50 focus:bg-background focus:outline-none focus:ring-4 focus:ring-primary/10 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-300 hover:bg-secondary/50"
+                                    className="flex h-12 w-full rounded-xl border border-input/50 bg-white/80 px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-50 shadow-sm transition-all duration-300 hover:bg-white hover:border-primary/30"
                                 />
                                 {errors.country && (
                                     <p className="text-sm text-destructive flex items-center gap-1 font-medium animate-in slide-in-from-left-1">
@@ -246,42 +276,41 @@ export default function ProjectForm() {
                             </div>
                         </div>
 
-                        {/* File Upload */}
-                        <div className="space-y-3">
-                            <label className="text-base font-semibold text-foreground/80">
-                                Project Document <span className="text-sm font-normal text-muted-foreground">(Optional)</span>
+                        {/* 4. Project Proposal Upload (Optional) */}
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-foreground">
+                                Project Proposal PDF <span className="text-muted-foreground font-normal ml-1">(Optional)</span>
                             </label>
-                            <div className="flex items-center justify-center w-full">
-                                <label
-                                    htmlFor="file-upload"
-                                    className="group flex flex-col items-center justify-center w-full h-40 border-3 border-dashed rounded-2xl cursor-pointer bg-secondary/10 border-input/50 hover:bg-secondary/20 hover:border-primary/50 transition-all duration-300"
-                                >
-                                    <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4">
-                                        <div className="p-3 bg-background rounded-full shadow-sm mb-3 group-hover:scale-110 transition-transform duration-300">
-                                            <Upload className="w-6 h-6 text-primary" />
-                                        </div>
-                                        <p className="mb-2 text-base font-medium text-foreground/80">
-                                            <span className="text-primary font-bold hover:underline">Click to upload</span> or drag and drop
+                            <label
+                                htmlFor="file-upload"
+                                className="group flex flex-col items-center justify-center w-full h-32 border border-dashed border-input/50 rounded-xl cursor-pointer bg-white/50 hover:bg-white transition-all duration-300 shadow-sm border-spacing-4 hover:border-primary/50"
+                            >
+                                <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4 space-y-2">
+                                    <Upload className="w-6 h-6 text-muted-foreground group-hover:text-primary transition-colors" />
+                                    <div className="space-y-1">
+                                        <p className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">
+                                            Click to Upload or Drag & Drop
                                         </p>
-                                        <p className="text-sm text-muted-foreground">
-                                            PDF, DOCX, or TXT (MAX. 5MB)
+                                        <p className="text-xs text-muted-foreground">
+                                            PDF, DOCX, or TXT
                                         </p>
                                     </div>
-                                    <input
-                                        id="file-upload"
-                                        type="file"
-                                        className="hidden"
-                                        {...register("file")}
-                                    />
-                                </label>
-                            </div>
+                                </div>
+                                <input
+                                    id="file-upload"
+                                    type="file"
+                                    className="hidden"
+                                    {...register("file")}
+                                />
+                            </label>
 
+                            {/* File Preview */}
                             {watch("file") && watch("file").length > 0 && (
-                                <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900 rounded-lg p-3 flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
-                                    <div className="bg-green-100 dark:bg-green-900 p-1.5 rounded-full">
-                                        <CheckCircle2 className="w-4 h-4 text-green-600" />
+                                <div className="bg-white/80 border border-border rounded-xl p-3 flex items-center gap-3 animate-in fade-in slide-in-from-top-2 mt-2 shadow-sm">
+                                    <div className="bg-background p-1 rounded-full border border-border">
+                                        <CheckCircle2 className="w-3 h-3 text-green-600" />
                                     </div>
-                                    <span className="text-sm font-medium text-foreground">{watch("file")?.[0]?.name}</span>
+                                    <span className="text-sm font-medium text-foreground truncate max-w-[200px]">{watch("file")?.[0]?.name}</span>
                                 </div>
                             )}
 
@@ -292,15 +321,15 @@ export default function ProjectForm() {
                             )}
                         </div>
 
-                        <div className="pt-8">
+                        {/* Action Button */}
+                        <div className="pt-4">
                             <button
                                 type="submit"
                                 suppressHydrationWarning
-                                disabled={isSubmitting} // NOTE: isSubmitting controls the modal submit state, so here we might not need to disable if we aren't submitting yet? 
-                                // actually, onProjectSubmit is synchronous, so we don't need a loading state on this button anymore unless we want to simulate pre-processing.
-                                className="w-full inline-flex h-14 items-center justify-center rounded-full bg-primary text-lg font-bold text-primary-foreground shadow-xl transition-all hover:bg-primary/90 hover:scale-[1.01] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
+                                disabled={isSubmitting}
+                                className="w-full inline-flex h-14 items-center justify-center rounded-full bg-gradient-to-r from-primary to-purple-600 px-8 text-base font-semibold text-white shadow-lg transition-all duration-300 hover:opacity-90 hover:shadow-primary/25 hover:scale-[1.01] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
                             >
-                                Proceed to Contact
+                                Request Estimate
                             </button>
                         </div>
                     </form>

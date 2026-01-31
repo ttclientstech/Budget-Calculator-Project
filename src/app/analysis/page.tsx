@@ -26,7 +26,7 @@ import {
 
 import jsPDF from "jspdf";
 import { useState, useRef, useEffect } from "react";
-import PdfReport from "@/components/analysis/PDFReport";
+import PdfReport from "@/components/analysis/PdfReport";
 
 export default function AnalysisPage() {
     const [isExporting, setIsExporting] = useState(false);

@@ -18,8 +18,8 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "Budget App",
-  description: "Calculate your budget with ease",
+  title: "Talentronaut | Web, Mobile & Blockchain Solutions",
+  description: "Dynamic and scalable digital solutions tailored to your business needs.",
 };
 
 export default function RootLayout({
@@ -30,6 +30,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
+        suppressHydrationWarning
         className={`${geistSans.variable} ${geistMono.variable} ${playfair.variable} antialiased`}
       >
         {children}

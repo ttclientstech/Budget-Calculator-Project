@@ -3,13 +3,13 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { X, AlertCircle } from "lucide-react";
+import { X, AlertCircle, LockKeyhole } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const contactSchema = z.object({
     name: z.string().min(2, { message: "Name must be at least 2 characters." }),
     email: z.string().email({ message: "Please enter a valid email address." }),
-    whatsapp: z.string().min(10, { message: "Please enter a valid WhatsApp number." }),
+    phone: z.string().min(10, { message: "Please enter a valid Phone number." }),
 });
 
 export type ContactFormValues = z.infer<typeof contactSchema>;
@@ -48,14 +48,16 @@ export default function ContactModal({ isOpen, onClose, onSubmit, isSubmitting }
                             animate={{ scale: 1, opacity: 1, y: 0 }}
                             exit={{ scale: 0.95, opacity: 0, y: 20 }}
                             onClick={(e) => e.stopPropagation()}
-                            className="bg-card w-full max-w-md rounded-3xl shadow-2xl border border-white/20 overflow-hidden relative"
+                            className="bg-card w-full max-w-md rounded-2xl shadow-2xl border border-white/20 overflow-hidden relative"
                         >
                             {/* Header */}
-                            <div className="p-6 md:p-8 pb-0 flex justify-between items-start">
+                            <div className="p-6 md:p-8 pb-4 flex justify-between items-start">
                                 <div>
-                                    <h3 className="text-2xl font-bold font-serif text-primary">Almost There!</h3>
-                                    <p className="text-muted-foreground mt-2">
-                                        Where should we send the proposal?
+                                    <h3 className="text-xl md:text-2xl font-bold font-sans text-primary leading-tight">
+                                        Your Project Report is ready to generate.
+                                    </h3>
+                                    <p className="text-muted-foreground mt-2 text-sm md:text-base">
+                                        Where should we send it?
                                     </p>
                                 </div>
                                 <button
@@ -67,19 +69,19 @@ export default function ContactModal({ isOpen, onClose, onSubmit, isSubmitting }
                             </div>
 
                             {/* Form */}
-                            <div className="p-6 md:p-8">
-                                <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                            <div className="p-6 md:p-8 pt-0">
+                                <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
 
                                     {/* Name */}
-                                    <div className="space-y-2">
-                                        <label htmlFor="name" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                    <div className="space-y-1.5">
+                                        <label htmlFor="name" className="text-sm font-semibold text-foreground/80">
                                             Full Name
                                         </label>
                                         <input
                                             {...register("name")}
                                             type="text"
                                             placeholder="John Doe"
-                                            className="flex h-12 w-full rounded-xl border-2 border-transparent bg-secondary/30 px-4 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:border-primary/50 focus:bg-background focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all"
+                                            className="flex h-12 w-full rounded-lg border border-input bg-background/50 px-4 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:border-primary focus:bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                                         />
                                         {errors.name && (
                                             <p className="text-xs text-destructive flex items-center gap-1 font-medium">
@@ -88,16 +90,34 @@ export default function ContactModal({ isOpen, onClose, onSubmit, isSubmitting }
                                         )}
                                     </div>
 
+                                    {/* Phone */}
+                                    <div className="space-y-1.5">
+                                        <label htmlFor="phone" className="text-sm font-semibold text-foreground/80">
+                                            Phone Number
+                                        </label>
+                                        <input
+                                            {...register("phone")}
+                                            type="tel"
+                                            placeholder="+1 (555) 000-0000"
+                                            className="flex h-12 w-full rounded-lg border border-input bg-background/50 px-4 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:border-primary focus:bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                                        />
+                                        {errors.phone && (
+                                            <p className="text-xs text-destructive flex items-center gap-1 font-medium">
+                                                <AlertCircle className="w-3 h-3" /> {errors.phone.message}
+                                            </p>
+                                        )}
+                                    </div>
+
                                     {/* Email */}
-                                    <div className="space-y-2">
-                                        <label htmlFor="email" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                    <div className="space-y-1.5">
+                                        <label htmlFor="email" className="text-sm font-semibold text-foreground/80">
                                             Email Address
                                         </label>
                                         <input
                                             {...register("email")}
                                             type="email"
                                             placeholder="john@example.com"
-                                            className="flex h-12 w-full rounded-xl border-2 border-transparent bg-secondary/30 px-4 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:border-primary/50 focus:bg-background focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all"
+                                            className="flex h-12 w-full rounded-lg border border-input bg-background/50 px-4 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:border-primary focus:bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                                         />
                                         {errors.email && (
                                             <p className="text-xs text-destructive flex items-center gap-1 font-medium">
@@ -106,36 +126,20 @@ export default function ContactModal({ isOpen, onClose, onSubmit, isSubmitting }
                                         )}
                                     </div>
 
-                                    {/* WhatsApp */}
-                                    <div className="space-y-2">
-                                        <label htmlFor="whatsapp" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                            WhatsApp Number
-                                        </label>
-                                        <input
-                                            {...register("whatsapp")}
-                                            type="tel"
-                                            placeholder="+1 234 567 890"
-                                            className="flex h-12 w-full rounded-xl border-2 border-transparent bg-secondary/30 px-4 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:border-primary/50 focus:bg-background focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all"
-                                        />
-                                        {errors.whatsapp && (
-                                            <p className="text-xs text-destructive flex items-center gap-1 font-medium">
-                                                <AlertCircle className="w-3 h-3" /> {errors.whatsapp.message}
-                                            </p>
-                                        )}
-                                    </div>
-
                                     <button
                                         type="submit"
                                         disabled={isSubmitting}
-                                        className="w-full inline-flex h-12 items-center justify-center rounded-full bg-primary text-base font-bold text-primary-foreground shadow-lg transition-all hover:bg-primary/90 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none mt-4"
+                                        className="w-full inline-flex h-12 items-center justify-center rounded-lg bg-primary text-base font-bold text-primary-foreground shadow-lg transition-all hover:bg-primary/90 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:pointer-events-none mt-2"
                                     >
                                         {isSubmitting ? (
                                             <span className="flex items-center gap-2">
                                                 <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                                                Sending...
+                                                Processing...
                                             </span>
                                         ) : (
-                                            "Submit Request"
+                                            <span className="flex items-center gap-2">
+                                                Unlock My Budget Report <LockKeyhole className="w-4 h-4 opacity-70" />
+                                            </span>
                                         )}
                                     </button>
                                 </form>
@@ -147,3 +151,4 @@ export default function ContactModal({ isOpen, onClose, onSubmit, isSubmitting }
         </AnimatePresence>
     );
 }
+

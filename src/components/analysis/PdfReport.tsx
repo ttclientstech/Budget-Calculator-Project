@@ -166,10 +166,54 @@ const PdfReport = forwardRef<HTMLDivElement, PDFReportProps>(({
             // Fallback to standard render
             return renderLine(line, i);
         });
-    };    // Brand Colors (Matching Global CSS)
+    };
+
+    // 5. Helper to render Markdown Tables
+    const renderMarkdownTable = (markdown: string) => {
+        if (!markdown) return null;
+        const lines = markdown.split(/\r?\n/).filter(line => line.trim());
+        const tableLines = lines.filter(line => line.trim().startsWith('|'));
+
+        // If not enough lines to form a table, return null to fallback to text
+        if (tableLines.length < 3) return null;
+
+        const parseRow = (line: string) => {
+            const parts = line.split('|');
+            return parts.slice(1, -1).map(c => c.trim());
+        };
+
+        const headers = parseRow(tableLines[0]);
+        // Row 1 is separator |---|
+        const rows = tableLines.slice(2).map(parseRow);
+
+        return (
+            <div className="overflow-hidden border border-[#e2e8f0] rounded-lg my-4 break-inside-avoid shadow-sm text-sm">
+                <table className="w-full text-left">
+                    <thead className="bg-[#f8fafc] border-b border-[#e2e8f0] text-[#64748b] uppercase text-[11px] tracking-wider">
+                        <tr>
+                            {headers.map((h, i) => (
+                                <th key={i} className="px-6 py-3 font-bold">{h}</th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {rows.map((row, i) => (
+                            <tr key={i} className="bg-white border-b border-[#e2e8f0] last:border-0 hover:bg-[#fafafa]">
+                                {row.map((cell, j) => (
+                                    <td key={j} className="px-6 py-4 text-[#334155] align-top leading-relaxed">
+                                        {formatText(cell)}
+                                    </td>
+                                ))}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        );
+    };
     // Background: hsl(26 100% 99%) -> #fffcfb
     // Foreground: hsl(220 10% 29%) -> #434d5b
-    // Primary: hsl(9 69% 53%) -> #D94632
+    // Primary: hsl(9 69% 53%) -> #D94632 (Talentronaut Terra-Cotta)
     // Secondary: hsl(17 100% 94%) -> #ffe0d1
 
     // A4 Aspect Ratio Container Style
@@ -181,10 +225,10 @@ const PdfReport = forwardRef<HTMLDivElement, PDFReportProps>(({
     const scopeLines = analysisData.scopeOfWork ? analysisData.scopeOfWork.split(/\r?\n|\\n/).filter(line => line.trim() !== '') : [];
 
     // Page 3 capacity: Project Overview is there, so we have less space for Scope.
-    // Reduced to 10 to ensure plenty of space for footer.
-    const ITEMS_PER_FIRST_PAGE = 10;
-    // Full Scope Page capacity: Reduced to 22 to prevent footer crowding.
-    const ITEMS_PER_FULL_PAGE = 22;
+    // Increased to 15 to better fill the page as per user feedback.
+    const ITEMS_PER_FIRST_PAGE = 15;
+    // Full Scope Page capacity: Increased to 25 to utilize full A4 height.
+    const ITEMS_PER_FULL_PAGE = 25;
 
     const firstScopeChunk = scopeLines.slice(0, ITEMS_PER_FIRST_PAGE);
     const remainingScopeLines = scopeLines.slice(ITEMS_PER_FIRST_PAGE);
@@ -194,9 +238,6 @@ const PdfReport = forwardRef<HTMLDivElement, PDFReportProps>(({
     for (let i = 0; i < remainingScopeLines.length; i += ITEMS_PER_FULL_PAGE) {
         scopeChunks.push(remainingScopeLines.slice(i, i + ITEMS_PER_FULL_PAGE));
     }
-
-    // Helper to render a chunk of lines (Same logic as renderContent but for array)
-    // Helper to render a chunk of lines (Same logic as renderContent but for array)
 
     return (
         <div ref={ref} className="bg-[#f3f4f6] p-4 md:p-8">
@@ -427,73 +468,11 @@ const PdfReport = forwardRef<HTMLDivElement, PDFReportProps>(({
                             <h3 className="text-[#0f172a] font-bold text-2xl mb-4 font-serif">
                                 Project Timeline
                             </h3>
-                            <div className="overflow-hidden border border-[#e2e8f0] rounded-lg">
-                                <table className="w-full text-sm text-left text-[#334155]">
-                                    <thead className="text-[12px] text-[#475569] uppercase bg-[#f8fafc] border-b border-[#e2e8f0]">
-                                        <tr>
-                                            <th scope="col" className="px-6 py-3 font-bold w-1/3">Phase / Milestone</th>
-                                            <th scope="col" className="px-6 py-3 font-bold">Duration / Details</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {(() => {
-                                            const lines = analysisData.timeline.split('\n').filter(line => line.trim());
-
-                                            // 1. Identify "Total" row vs regular rows
-                                            // The API often puts the total summary as the first line like "12-14 Weeks Total"
-                                            // or we might find "Total" in the text.
-                                            let totalRow: { phase: string; duration: string } | null = null;
-                                            let regularRows: { phase: string; duration: string }[] = [];
-
-                                            lines.forEach((line, index) => {
-                                                const cleanLine = line.replace(/^[-•*]\s*/, '').trim();
-                                                const parts = cleanLine.includes(':') ? cleanLine.split(':') : [cleanLine, ''];
-                                                const phase = parts[0].trim();
-                                                const duration = parts.slice(1).join(':').trim();
-
-                                                const item = { phase, duration };
-
-                                                // Heuristic: If it's the first line and has no colon/duration, OR explicitly says Total in phase
-                                                const isTotal = (index === 0 && !duration) || phase.toLowerCase().includes('total');
-
-                                                if (isTotal) {
-                                                    totalRow = item;
-                                                } else {
-                                                    regularRows.push(item);
-                                                }
-                                            });
-
-                                            // 2. Render Regular Rows
-                                            return (
-                                                <>
-                                                    {regularRows.map((row, i) => (
-                                                        <tr key={i} className="bg-white border-b border-[#e2e8f0] last:border-0 hover:bg-[#fcfcfc]">
-                                                            <td className="px-6 py-4 font-medium text-[#0f172a]">
-                                                                {row.phase}
-                                                            </td>
-                                                            <td className="px-6 py-4 text-[#334155]">
-                                                                {row.duration || '-'}
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-
-                                                    {/* 3. Render Total Row at the Bottom */}
-                                                    {totalRow && (
-                                                        <tr className="bg-[#fff7ed] border-t-2 border-[#D94632]">
-                                                            <td className="px-6 py-4 font-bold text-[#D94632]">
-                                                                Total Estimated Timeline
-                                                            </td>
-                                                            <td className="px-6 py-4 font-bold text-[#D94632]">
-                                                                {totalRow.phase.replace(/total/i, '').trim() || totalRow.phase}
-                                                            </td>
-                                                        </tr>
-                                                    )}
-                                                </>
-                                            );
-                                        })()}
-                                    </tbody>
-                                </table>
-                            </div>
+                            {renderMarkdownTable(analysisData.timeline) || (
+                                <div className="text-[#334155] leading-relaxed text-base font-light whitespace-pre-line">
+                                    {renderContent(analysisData.timeline)}
+                                </div>
+                            )}
                         </div>
 
                         <hr className="border-[#e2e8f0]" />
@@ -503,43 +482,11 @@ const PdfReport = forwardRef<HTMLDivElement, PDFReportProps>(({
                             <h3 className="text-[#0f172a] font-bold text-2xl mb-4 font-serif">
                                 Technologies & Frameworks
                             </h3>
-                            <div className="overflow-hidden border border-[#e2e8f0] rounded-lg">
-                                <table className="w-full text-sm text-left text-[#334155]">
-                                    <thead className="text-[12px] text-[#475569] uppercase bg-[#f8fafc] border-b border-[#e2e8f0]">
-                                        <tr>
-                                            <th scope="col" className="px-6 py-3 font-bold w-1/4">Category</th>
-                                            <th scope="col" className="px-6 py-3 font-bold">Technology Stack</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {analysisData.technologies.split('\n').map((line, index) => {
-                                            const cleanLine = line.replace(/^[-•*]\s*/, '').trim();
-                                            if (!cleanLine) return null;
-
-                                            // Try to split by colon first
-                                            let category = "General";
-                                            let stack = cleanLine;
-
-                                            if (cleanLine.includes(':')) {
-                                                const parts = cleanLine.split(':');
-                                                category = parts[0].trim();
-                                                stack = parts.slice(1).join(':').trim();
-                                            }
-
-                                            return (
-                                                <tr key={index} className="bg-white border-b border-[#e2e8f0] last:border-0 hover:bg-[#fcfcfc]">
-                                                    <td className="px-6 py-4 font-bold text-[#0f172a] bg-[#fdfdfd]">
-                                                        {category}
-                                                    </td>
-                                                    <td className="px-6 py-4 text-[#334155]">
-                                                        {stack}
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            </div>
+                            {renderMarkdownTable(analysisData.technologies) || (
+                                <div className="text-[#334155] leading-relaxed text-base font-light whitespace-pre-line">
+                                    {renderContent(analysisData.technologies)}
+                                </div>
+                            )}
                         </div>
                     </div>
                     {/* Website Footer */}
@@ -566,7 +513,7 @@ const PdfReport = forwardRef<HTMLDivElement, PDFReportProps>(({
                                 Approximate Investment
                             </h3>
                             <div className="text-[#0f172a] text-lg font-medium leading-relaxed whitespace-pre-line border-l-4 border-[#D94632] pl-6 py-2 bg-[#fff7ed]">
-                                {renderContent(analysisData.investment)}
+                                {renderMarkdownTable(analysisData.investment) || renderContent(analysisData.investment)}
                             </div>
                         </div>
 
@@ -634,7 +581,6 @@ const PdfReport = forwardRef<HTMLDivElement, PDFReportProps>(({
                 </div>
             </div>
 
-
             {/* --- PAGE 7: GLOBAL PRESENCE --- */}
             <div id="pdf-page-7" className={pageStyle}>
 
@@ -654,7 +600,8 @@ const PdfReport = forwardRef<HTMLDivElement, PDFReportProps>(({
 
                     {/* Header */}
                     <div className="mb-8">
-                        <h2 className="text-[#D94632] font-bold text-5xl font-serif mb-2">Global Presence</h2>
+                        {/* Updated Color to match Hero Branding (#D94632) */}
+                        <h2 className="text-[#D94632] font-bold text-6xl font-serif mb-2 tracking-tight">Global Presence</h2>
                     </div>
 
                     {/* Locations Columns */}
@@ -684,37 +631,40 @@ const PdfReport = forwardRef<HTMLDivElement, PDFReportProps>(({
                     </div>
 
                     {/* Map Section */}
-                    {/* Map Section */}
-                    <div className="relative w-full h-[320px] mb-12 bg-white rounded-3xl shadow-xl flex items-center justify-center overflow-hidden">
-                        {/* Map Image - Fits exactly like the outer box (full bleed) */}
+                    <div className="relative w-full h-[320px] mb-12 bg-white rounded-3xl shadow-xl flex items-center justify-center overflow-hidden border border-orange-100/50">
+                        {/* Map Image */}
                         <img src="/images/globe.png" alt="Global Presence Map" className="w-full h-full object-cover" />
                     </div>
 
 
                     {/* Stats Bar */}
-                    <div className="bg-[#D94632] text-white p-6 rounded-2xl shadow-lg flex items-center justify-between mb-12">
-                        <div className="flex flex-col">
-                            <h3 className="text-2xl font-serif font-bold">Websites in Numbers</h3>
-                            <div className="flex items-center gap-2 mt-1">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-white/80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    {/* Using #D94632 background to match the red/orange branding */}
+                    <div className="bg-[#D94632] text-white p-8 rounded-3xl shadow-lg flex items-center justify-between mb-12 relative overflow-hidden">
+                        {/* Subtle Shine/Glow effect */}
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
+
+                        <div className="flex flex-col relative z-10">
+                            <h3 className="text-3xl font-serif font-bold mb-1">Websites in Numbers</h3>
+                            <div className="flex items-center gap-2 opacity-90">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                                 </svg>
-                                <span className="text-sm text-white/90">Chennai, TN, India</span>
+                                <span className="text-base font-medium">Chennai, TN, India</span>
                             </div>
                         </div>
-                        <div className="flex gap-12 text-center">
+                        <div className="flex gap-16 text-center relative z-10">
                             <div>
-                                <p className="text-3xl font-bold">4+</p>
-                                <p className="text-xs uppercase tracking-wider opacity-90">Years</p>
+                                <p className="text-4xl font-bold mb-1">4+</p>
+                                <p className="text-xs uppercase tracking-wider font-bold opacity-80">Years</p>
                             </div>
                             <div>
-                                <p className="text-3xl font-bold">250</p>
-                                <p className="text-xs uppercase tracking-wider opacity-90">Clients</p>
+                                <p className="text-4xl font-bold mb-1">250</p>
+                                <p className="text-xs uppercase tracking-wider font-bold opacity-80">Clients</p>
                             </div>
                             <div>
-                                <p className="text-3xl font-bold">450+</p>
-                                <p className="text-xs uppercase tracking-wider opacity-90">Projects</p>
+                                <p className="text-4xl font-bold mb-1">450+</p>
+                                <p className="text-xs uppercase tracking-wider font-bold opacity-80">Projects</p>
                             </div>
                         </div>
                     </div>
@@ -744,7 +694,7 @@ const PdfReport = forwardRef<HTMLDivElement, PDFReportProps>(({
 
                 </div>
             </div>
-        </div >
+        </div>
     );
 });
 
