@@ -73,6 +73,7 @@ export default function ProjectForm() {
 
     const descriptionValue = watch("description") || "";
     const wordCount = descriptionValue.trim().split(/\s+/).filter((w) => w.length > 0).length;
+    const fileValue = watch("file");
 
     const onProjectSubmit = (data: FormValues) => {
         // Step 1: Save data and open modal
@@ -305,12 +306,12 @@ export default function ProjectForm() {
                             </label>
 
                             {/* File Preview */}
-                            {watch("file") && watch("file").length > 0 && (
+                            {fileValue && fileValue.length > 0 && (
                                 <div className="bg-white/80 border border-border rounded-xl p-3 flex items-center gap-3 animate-in fade-in slide-in-from-top-2 mt-2 shadow-sm">
                                     <div className="bg-background p-1 rounded-full border border-border">
                                         <CheckCircle2 className="w-3 h-3 text-green-600" />
                                     </div>
-                                    <span className="text-sm font-medium text-foreground truncate max-w-[200px]">{watch("file")?.[0]?.name}</span>
+                                    <span className="text-sm font-medium text-foreground truncate max-w-[200px]">{fileValue?.[0]?.name}</span>
                                 </div>
                             )}
 
