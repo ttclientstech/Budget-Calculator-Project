@@ -44,7 +44,7 @@ const ServiceCard = ({ icon: Icon, title, description, delay }: { icon: React.El
     whileInView={{ opacity: 1, y: 0 }}
     viewport={{ once: true }}
     transition={{ duration: 0.5, delay }}
-    className="group relative h-full bg-white/50 backdrop-blur-lg border border-white/50 p-8 rounded-3xl hover:bg-white/80 transition-all duration-500 hover:shadow-2xl hover:shadow-orange-500/10 hover:-translate-y-2"
+    className="group relative h-full bg-white/50 backdrop-blur-md border border-white/50 p-8 rounded-3xl hover:bg-white/80 transition-all duration-500 hover:shadow-2xl hover:shadow-orange-500/10 hover:-translate-y-2"
   >
     <div className="absolute inset-0 bg-gradient-to-br from-orange-50/50 to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
@@ -335,7 +335,7 @@ export default function BudgetCalculatorFunnel() {
             </p>
           </FadeIn>
 
-          <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-8 md:overflow-visible md:pb-0 no-scrollbar">
+          <div className="flex overflow-x-auto snap-x snap-proximity gap-4 pb-4 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-8 md:overflow-visible md:pb-0 no-scrollbar">
             {services.map((service, idx) => (
               <div key={idx} className="min-w-[85vw] sm:min-w-[45vw] snap-center md:min-w-0">
                 <ServiceCard
@@ -427,7 +427,7 @@ export default function BudgetCalculatorFunnel() {
             <p className="text-lg text-gray-500">Join trusted companies building the future with us.</p>
           </FadeIn>
 
-          <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-8 md:overflow-visible md:pb-0 no-scrollbar">
+          <div className="flex overflow-x-auto snap-x snap-proximity gap-4 pb-4 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-8 md:overflow-visible md:pb-0 no-scrollbar">
             {testimonials.map((t, i) => (
               <div key={i} className="min-w-[85vw] sm:min-w-[45vw] snap-center md:min-w-0">
                 <TestimonialCard {...t} />
